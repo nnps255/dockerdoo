@@ -1,11 +1,5 @@
 version: "3.7"
 
-networks:
-  default:
-    external:
-      name: cloudbuild
-  odoonet:
-
 volumes:
   odoo-data:
   odoo-testlogs:
@@ -26,12 +20,15 @@ services:
       # Named volumes
       - odoo-data:${ODOO_DATA_DIR}
       - odoo-testlogs:${ODOO_LOGS_DIR}
+    labels:
+      - 'traefik.http.routers.${RESOLVER_NAME}.rule=Host(`${ODOO_TRAEFIK_URL_COMPANY}`)'
+      - 'traefik.http.routers.${RESOLVER_NAME}.entrypoints=websecure'
+      - 'traefik.http.routers.${RESOLVER_NAME}.tls.certresolver=${RESOLVER_NAME}'
+      - 'traefik.port=8069'
+      - "traefik.docker.network=odoonet"
 
     depends_on:
       - db
-
-    networks:
-      odoonet:
   # ------------------------
   db:
     image: postgres:${PSQL_VERSION}
@@ -44,5 +41,7 @@ services:
       - POSTGRES_USER=${POSTGRES_USER}
       - PGDATA=/var/lib/postgresql/data/pgdata
 
-    networks:
-      odoonet:
+networks:
+  web:
+    external:
+      name: odoonet
