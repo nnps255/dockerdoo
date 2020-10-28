@@ -1,0 +1,35 @@
+version: '3'
+
+services:
+  traefik:
+    image: 'traefik:v2.0'
+    env_file: .env
+    ports:
+      - '80:80'
+      - '443:443'
+      - '8080:8080'
+    volumes:
+      - './traefik/letsencrypt:/letsencrypt'
+      - './traefik/traefik.yml:/etc/traefik.yml'
+      - '/var/run/docker.sock:/var/run/docker.sock'
+    labels:
+      - 'traefik.http.routers.http-catchall.rule=hostregexp(`{host:.+}`)'
+      - 'traefik.http.routers.http-catchall.entrypoints=web'
+      - 'traefik.http.routers.http-catchall.middlewares=redirect-to-https@docker'
+      - 'traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https'
+    command:
+      - "--log.level=DEBUG"
+      - "--api.insecure=false"
+      - "--providers.docker"
+      - "--providers.docker.defaultRule=Host(`{{ trimPrefix `/` .Name}}.${TRAEFIK_DEFAULT_DOMAIN}`)"
+      - "--entryPoints.web.address=:80"
+      - "--entryPoints.websecure.address=:443"
+      - "--certificatesResolvers.${RESOLVER_NAME}.acme.httpchallenge=true"
+      - "--certificatesresolvers.${RESOLVER_NAME}.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.${RESOLVER_NAME}.acme.email=${ACME_EMAIL}"
+      - "--certificatesresolvers.${RESOLVER_NAME}.acme.storage=/letsencrypt/acme.json"
+
+networks:
+  web:
+    external:
+      name: odoonet
